@@ -40,6 +40,9 @@ canvas{display:block}
 .card-item .card-icon{font-size:44px;margin:18px 0 12px}
 .card-item .card-name{font-size:17px;font-weight:bold;color:#fff;margin-bottom:8px}
 .card-item .card-desc{font-size:12px;color:rgba(255,255,255,0.7);line-height:1.6;flex:1}
+.card-desc .cv{font-style:normal;color:#ffdd44;font-weight:bold;text-shadow:0 0 6px rgba(255,220,60,0.5)}
+.card-desc .ck{font-style:normal;color:#66ddff;font-weight:bold;text-shadow:0 0 6px rgba(100,220,255,0.4)}
+.card-desc .cn{font-style:normal;color:#ff7788;font-weight:bold;text-shadow:0 0 6px rgba(255,100,120,0.4)}
 .card-item .card-duration{font-size:11px;color:rgba(255,255,255,0.45);margin-top:8px;font-style:italic}
 .card-item .card-key{margin-top:12px;font-size:13px;padding:4px 16px;border-radius:6px;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7)}
 .card-common{background:linear-gradient(165deg,rgba(40,55,90,0.95),rgba(25,35,65,0.98))}
@@ -50,6 +53,9 @@ canvas{display:block}
 .card-epic .card-rarity{background:rgba(255,130,60,0.3);color:#ff9944}
 .card-legendary{background:linear-gradient(165deg,rgba(90,75,20,0.95),rgba(70,55,15,0.98));box-shadow:0 0 20px rgba(255,200,60,0.15)}
 .card-legendary .card-rarity{background:rgba(255,200,60,0.3);color:#ffcc44}
+.card-perm{background:linear-gradient(165deg,rgba(20,60,60,0.95),rgba(10,45,50,0.98));border:2px solid rgba(0,255,200,0.3);box-shadow:0 0 25px rgba(0,255,180,0.2)}
+.card-perm .card-rarity{background:rgba(0,255,180,0.3);color:#44ffcc}
+.card-perm::before{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,transparent,rgba(0,255,200,0.05),transparent);pointer-events:none}
 .card-hint{font-size:12px;color:#556;margin-top:24px}
 .card-active-list{position:fixed;top:8px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:50;pointer-events:none;flex-wrap:wrap;justify-content:center;max-width:80%}
 .card-active-tag{padding:3px 10px;border-radius:10px;font-size:10px;font-weight:bold;opacity:0.85;white-space:nowrap}
@@ -99,44 +105,110 @@ let gameState='idle',currentRound=0,totalRounds=20,rounds=[];
 let gameStartTime=0,roundStartTime=0,beatCount=0,lastBeatTime=0,beatFlash=0,keyBeatFlash=0;
 
 // ========== Roguelike Card System ==========
-const CARD_INTERVAL=5,CARD_TIMER_S=10;
+const CARD_INTERVAL=4,CARD_TIMER_S=10;
 let cardState='idle',cardTimer=0,cardStartT=0,cardChoices=[],cardPickIdx=-1;
 let pCards=[],cCards=[];
 const ALL_CARDS=[
-  {id:'s10',name:'分数加成',icon:'💰',rarity:'common',rl:'普通',desc:'接下来5回合判定分数+10%',dur:5,eff:{t:'sMult',v:1.1},css:'card-common'},
-  {id:'cshield',name:'连击护盾',icon:'🛡️',rarity:'common',rl:'普通',desc:'接下来5回合首次断连不清零combo',dur:5,eff:{t:'cShield',v:1},css:'card-common'},
-  {id:'jwS',name:'宽容之心',icon:'💝',rarity:'common',rl:'普通',desc:'接下来5回合判定窗口扩大15%',dur:5,eff:{t:'jWiden',v:0.15},css:'card-common'},
-  {id:'sTrack',name:'时光减速',icon:'⏳',rarity:'common',rl:'普通',desc:'接下来5回合音轨速度减慢10%',dur:5,eff:{t:'tSlow',v:0.10},css:'card-common'},
-  {id:'inst300',name:'即时奖励',icon:'🎁',rarity:'common',rl:'普通',desc:'立即获得300分',dur:0,eff:{t:'instS',v:300},css:'card-common'},
-  {id:'s25',name:'暴富符咒',icon:'💎',rarity:'rare',rl:'稀有',desc:'接下来5回合判定分数+25%',dur:5,eff:{t:'sMult',v:1.25},css:'card-rare'},
-  {id:'pChain',name:'完美连锁',icon:'⚡',rarity:'rare',rl:'稀有',desc:'接下来5回合PERFECT额外+200分',dur:5,eff:{t:'pBonus',v:200},css:'card-rare'},
-  {id:'autoF',name:'自动起手',icon:'🤖',rarity:'rare',rl:'稀有',desc:'接下来5回合自动输入前2个音符',dur:5,eff:{t:'autoIn',v:2},css:'card-rare'},
-  {id:'jwB',name:'大慈大悲',icon:'🌟',rarity:'rare',rl:'稀有',desc:'接下来5回合判定窗口扩大30%',dur:5,eff:{t:'jWiden',v:0.30},css:'card-rare'},
-  {id:'cBoost',name:'连击催化',icon:'🔥',rarity:'rare',rl:'稀有',desc:'接下来5回合combo加成翻倍',dur:5,eff:{t:'cBoost',v:2},css:'card-rare'},
-  {id:'cpuD',name:'干扰电波',icon:'📡',rarity:'rare',rl:'稀有',desc:'接下来5回合对手准确率-15%',dur:5,eff:{t:'cpuDeb',v:0.15},css:'card-rare'},
-  {id:'golden',name:'黄金时刻',icon:'👑',rarity:'epic',rl:'史诗',desc:'接下来3回合所有判定视为PERFECT（含miss）',dur:3,eff:{t:'allP',v:1},css:'card-epic'},
-  {id:'sx2',name:'双倍狂欢',icon:'🎪',rarity:'epic',rl:'史诗',desc:'接下来3回合分数翻倍',dur:3,eff:{t:'sMult',v:2.0},css:'card-epic'},
-  {id:'steal',name:'偷分大盗',icon:'🦊',rarity:'epic',rl:'史诗',desc:'偷取对手500分',dur:0,eff:{t:'steal',v:500},css:'card-epic'},
-  {id:'infC',name:'不灭连击',icon:'♾️',rarity:'legendary',rl:'传说',desc:'接下来5回合combo永不断裂且自动PERFECT',dur:5,eff:{t:'infCombo',v:1},css:'card-legendary'},
-  {id:'swap',name:'命运逆转',icon:'🔮',rarity:'legendary',rl:'传说',desc:'与对手交换当前分数',dur:0,eff:{t:'swapS',v:1},css:'card-legendary'},
+  {id:'s10',name:'分数加成',icon:'💰',rarity:'common',rl:'普通',desc:'接下来<em class="cv">5</em>回合<em class="ck">判定分数</em>+<em class="cv">10%</em>',dur:5,eff:{t:'sMult',v:1.1},css:'card-common'},
+  {id:'cshield',name:'连击护盾',icon:'🛡️',rarity:'common',rl:'普通',desc:'接下来<em class="cv">5</em>回合首次断连<em class="ck">不清零combo</em>',dur:5,eff:{t:'cShield',v:1},css:'card-common'},
+  {id:'jwS',name:'宽容之心',icon:'💝',rarity:'common',rl:'普通',desc:'接下来<em class="cv">5</em>回合<em class="ck">判定窗口</em>扩大<em class="cv">15%</em>',dur:5,eff:{t:'jWiden',v:0.15},css:'card-common'},
+  {id:'sTrack',name:'时光减速',icon:'⏳',rarity:'common',rl:'普通',desc:'接下来<em class="cv">5</em>回合<em class="ck">音轨速度</em>减慢<em class="cv">10%</em>',dur:5,eff:{t:'tSlow',v:0.10},css:'card-common'},
+  {id:'inst300',name:'即时奖励',icon:'🎁',rarity:'common',rl:'普通',desc:'立即获得<em class="cv">300</em>分',dur:0,eff:{t:'instS',v:300},css:'card-common'},
+  {id:'s25',name:'暴富符咒',icon:'💎',rarity:'rare',rl:'稀有',desc:'接下来<em class="cv">5</em>回合<em class="ck">判定分数</em>+<em class="cv">25%</em>',dur:5,eff:{t:'sMult',v:1.25},css:'card-rare'},
+  {id:'pChain',name:'完美连锁',icon:'⚡',rarity:'rare',rl:'稀有',desc:'接下来<em class="cv">5</em>回合<em class="ck">PERFECT</em>额外+<em class="cv">200</em>分',dur:5,eff:{t:'pBonus',v:200},css:'card-rare'},
+  {id:'autoF',name:'自动起手',icon:'🤖',rarity:'rare',rl:'稀有',desc:'接下来<em class="cv">5</em>回合自动输入前<em class="cv">2</em>个音符',dur:5,eff:{t:'autoIn',v:2},css:'card-rare'},
+  {id:'jwB',name:'大慈大悲',icon:'🌟',rarity:'rare',rl:'稀有',desc:'接下来<em class="cv">5</em>回合<em class="ck">判定窗口</em>扩大<em class="cv">30%</em>',dur:5,eff:{t:'jWiden',v:0.30},css:'card-rare'},
+  {id:'cBoost',name:'连击催化',icon:'🔥',rarity:'rare',rl:'稀有',desc:'接下来<em class="cv">5</em>回合<em class="ck">combo加成</em>翻倍',dur:5,eff:{t:'cBoost',v:2},css:'card-rare'},
+  {id:'cpuD',name:'干扰电波',icon:'📡',rarity:'rare',rl:'稀有',desc:'接下来<em class="cv">5</em>回合对手<em class="ck">准确率</em><em class="cn">-15%</em>',dur:5,eff:{t:'cpuDeb',v:0.15},css:'card-rare'},
+  {id:'golden',name:'黄金时刻',icon:'👑',rarity:'epic',rl:'史诗',desc:'接下来<em class="cv">3</em>回合所有判定视为<em class="ck">PERFECT</em>（含miss）',dur:3,eff:{t:'allP',v:1},css:'card-epic'},
+  {id:'sx2',name:'双倍狂欢',icon:'🎪',rarity:'epic',rl:'史诗',desc:'接下来<em class="cv">3</em>回合<em class="ck">分数翻倍</em>',dur:3,eff:{t:'sMult',v:2.0},css:'card-epic'},
+  {id:'steal',name:'偷分大盗',icon:'🦊',rarity:'epic',rl:'史诗',desc:'偷取对手<em class="cn">500</em>分',dur:0,eff:{t:'steal',v:500},css:'card-epic'},
+  {id:'infC',name:'不灭连击',icon:'♾️',rarity:'legendary',rl:'传说',desc:'接下来<em class="cv">5</em>回合<em class="ck">combo永不断裂</em>且自动<em class="ck">PERFECT</em>',dur:5,eff:{t:'infCombo',v:1},css:'card-legendary'},
+  {id:'swap',name:'命运逆转',icon:'🔮',rarity:'legendary',rl:'传说',desc:'与对手<em class="cn">交换当前分数</em>',dur:0,eff:{t:'swapS',v:1},css:'card-legendary'},
   // === 对敌互动卡牌 ===
-  {id:'addN',name:'音符轰炸',icon:'💣',rarity:'rare',rl:'稀有',desc:'接下来3回合对手每轮多2个音符',dur:3,eff:{t:'addNotes',v:2},target:'opp',css:'card-rare'},
-  {id:'oppSpd',name:'疾风骤雨',icon:'🌪️',rarity:'rare',rl:'稀有',desc:'接下来2回合对手音轨加速40%',dur:2,eff:{t:'oppSpeed',v:0.40},target:'opp',css:'card-rare'},
-  {id:'sDeb',name:'暗箱操作',icon:'🕳️',rarity:'epic',rl:'史诗',desc:'接下来3回合对手得分-30%',dur:3,eff:{t:'oppSDebuff',v:0.30},target:'opp',css:'card-epic'},
-  {id:'ink',name:'墨汁陷阱',icon:'🦑',rarity:'epic',rl:'史诗',desc:'接下来3回合对手部分按键被墨汁遮挡',dur:3,eff:{t:'inkBlot',v:1},target:'opp',css:'card-epic'},
+  {id:'addN',name:'音符轰炸',icon:'💣',rarity:'rare',rl:'稀有',desc:'接下来<em class="cv">3</em>回合对手每轮多<em class="cn">2</em>个音符',dur:3,eff:{t:'addNotes',v:2},target:'opp',css:'card-rare'},
+  {id:'oppSpd',name:'疾风骤雨',icon:'🌪️',rarity:'rare',rl:'稀有',desc:'接下来<em class="cv">2</em>回合对手<em class="ck">音轨</em>加速<em class="cn">40%</em>',dur:2,eff:{t:'oppSpeed',v:0.40},target:'opp',css:'card-rare'},
+  {id:'sDeb',name:'暗箱操作',icon:'🕳️',rarity:'epic',rl:'史诗',desc:'接下来<em class="cv">3</em>回合对手<em class="ck">得分</em><em class="cn">-30%</em>',dur:3,eff:{t:'oppSDebuff',v:0.30},target:'opp',css:'card-epic'},
+  {id:'ink',name:'墨汁陷阱',icon:'🦑',rarity:'epic',rl:'史诗',desc:'接下来<em class="cv">2</em>回合对手<em class="cv">1</em>个按键被<em class="cn">墨汁遮挡</em>',dur:2,eff:{t:'inkBlot',v:1},target:'opp',css:'card-epic'},
+];
+// === 永久构筑卡牌 —— 一旦选中，整局有效 ===
+const PERM_CARDS=[
+  {id:'pp100',name:'完美之心',icon:'💎',rarity:'rare',rl:'稀有',desc:'【永久】<em class="ck">PERFECT</em>额外+<em class="cv">100</em>分',dur:-1,perm:true,eff:{t:'pBonus',v:100},css:'card-perm'},
+  {id:'pp250',name:'极致完美',icon:'🏆',rarity:'epic',rl:'史诗',desc:'【永久】<em class="ck">PERFECT</em>额外+<em class="cv">250</em>分',dur:-1,perm:true,eff:{t:'pBonus',v:250},css:'card-perm'},
+  {id:'pjw10',name:'柔软触感',icon:'🧤',rarity:'common',rl:'普通',desc:'【永久】<em class="ck">判定窗口</em>扩大<em class="cv">10%</em>',dur:-1,perm:true,eff:{t:'jWiden',v:0.10},css:'card-perm'},
+  {id:'pjw20',name:'第六感',icon:'🔮',rarity:'rare',rl:'稀有',desc:'【永久】<em class="ck">判定窗口</em>扩大<em class="cv">20%</em>',dur:-1,perm:true,eff:{t:'jWiden',v:0.20},css:'card-perm'},
+  {id:'psm8',name:'聚宝盆',icon:'🪙',rarity:'common',rl:'普通',desc:'【永久】所有<em class="ck">判定得分</em>+<em class="cv">8%</em>',dur:-1,perm:true,eff:{t:'sMult',v:1.08},css:'card-perm'},
+  {id:'psm15',name:'黄金体质',icon:'✨',rarity:'rare',rl:'稀有',desc:'【永久】所有<em class="ck">判定得分</em>+<em class="cv">15%</em>',dur:-1,perm:true,eff:{t:'sMult',v:1.15},css:'card-perm'},
+  {id:'pcb',name:'连击体质',icon:'🧬',rarity:'rare',rl:'稀有',desc:'【永久】<em class="ck">combo基础加成</em>+<em class="cv">50%</em>',dur:-1,perm:true,eff:{t:'cBoost',v:1.5},css:'card-perm'},
+  {id:'pauto1',name:'肌肉记忆',icon:'💪',rarity:'common',rl:'普通',desc:'【永久】自动输入第<em class="cv">1</em>个音符',dur:-1,perm:true,eff:{t:'autoIn',v:1},css:'card-perm'},
+  {id:'pts5',name:'时间感知',icon:'⏰',rarity:'common',rl:'普通',desc:'【永久】<em class="ck">音轨速度</em>减慢<em class="cv">5%</em>',dur:-1,perm:true,eff:{t:'tSlow',v:0.05},css:'card-perm'},
+  {id:'pcs',name:'不屈意志',icon:'🛡️',rarity:'rare',rl:'稀有',desc:'【永久】每轮首次断连<em class="ck">不清零combo</em>',dur:-1,perm:true,eff:{t:'cShield',v:1},css:'card-perm'},
 ];
 const RW={common:50,rare:30,epic:15,legendary:5};
-function randCards(n){const pool=[...ALL_CARDS],res=[];for(let i=0;i<n&&pool.length;i++){const tw=pool.reduce((s,c)=>s+RW[c.rarity],0);let r=Math.random()*tw,pi=0;for(let j=0;j<pool.length;j++){r-=RW[pool[j].rarity];if(r<=0){pi=j;break}}res.push(pool[pi]);pool.splice(pi,1)}return res}
-function getEff(cards,t){for(const c of cards)if(c.eff.t===t&&c.rem>0)return c.eff.v;return null}
+let pPermCards=[],cPermCards=[]; // 永久卡牌存储
+// 抽卡：每次3张中至少有1张可能是永久卡（30%概率出1张永久卡）
+function randCards(n){
+  const pool=[...ALL_CARDS],res=[];
+  // 35%概率混入一张永久卡（过滤已拥有的）
+  const ownedPermIds=pPermCards.map(c=>c.id);
+  const availPerm=PERM_CARDS.filter(c=>!ownedPermIds.includes(c.id));
+  let permSlot=-1;
+  if(availPerm.length>0&&Math.random()<0.35)permSlot=Math.floor(Math.random()*n);
+  for(let i=0;i<n&&pool.length;i++){
+    if(i===permSlot){
+      // 从可用永久卡中按稀有度加权抽取
+      const tw=availPerm.reduce((s,c)=>s+RW[c.rarity],0);let r=Math.random()*tw,pi=0;
+      for(let j=0;j<availPerm.length;j++){r-=RW[availPerm[j].rarity];if(r<=0){pi=j;break}}
+      res.push(availPerm[pi]);continue;
+    }
+    const tw=pool.reduce((s,c)=>s+RW[c.rarity],0);let r=Math.random()*tw,pi=0;
+    for(let j=0;j<pool.length;j++){r-=RW[pool[j].rarity];if(r<=0){pi=j;break}}
+    res.push(pool[pi]);pool.splice(pi,1);
+  }
+  return res;
+}
+// AI抽卡（纯临时卡）
+function randCardsAI(n){const pool=[...ALL_CARDS],res=[];for(let i=0;i<n&&pool.length;i++){const tw=pool.reduce((s,c)=>s+RW[c.rarity],0);let r=Math.random()*tw,pi=0;for(let j=0;j<pool.length;j++){r-=RW[pool[j].rarity];if(r<=0){pi=j;break}}res.push(pool[pi]);pool.splice(pi,1)}return res}
+function getEff(cards,t){
+  for(const c of cards)if(c.eff.t===t&&c.rem>0)return c.eff.v;
+  return null;
+}
+// 获取效果值（包含永久卡牌）
+function getEffAll(cards,permCards,t){
+  let v=getEff(cards,t);
+  for(const c of permCards)if(c.eff.t===t){
+    if(v===null)v=c.eff.v;
+    else{
+      // 叠加规则
+      if(t==='sMult')v*=c.eff.v; // sMult相乘（如1.1*1.08=1.188）
+      else if(t==='pBonus'||t==='jWiden'||t==='tSlow')v+=c.eff.v; // 累加
+      else v=Math.max(v,c.eff.v); // autoIn/cBoost/cShield等取最大
+    }
+  }
+  return v;
+}
 function hasEff(cards,t){return cards.some(c=>c.eff.t===t&&c.rem>0)}
-function applyCard(card,pl,opp){const e=card.eff;if(e.t==='instS')pl.score+=e.v;else if(e.t==='steal'){const s=Math.min(opp.score,e.v);opp.score-=s;pl.score+=s;triggerAttackVFX(card,pl,opp)}else if(e.t==='swapS'){const t=pl.score;pl.score=opp.score;opp.score=t;triggerAttackVFX(card,pl,opp)}else if(card.dur>0){const ac={...card,rem:card.dur};if(card.target==='opp'){/* 对敌卡牌效果加到对手身上 */if(opp===player1)pCards.push(ac);else cCards.push(ac);triggerAttackVFX(card,pl,opp)}else{if(pl===player1)pCards.push(ac);else cCards.push(ac);/* cpuDeb虽存在自己cards中但实际是攻击性的 */if(e.t==='cpuDeb')triggerAttackVFX(card,pl,opp)}}}
+function hasEffAll(cards,permCards,t){return hasEff(cards,t)||permCards.some(c=>c.eff.t===t)}
+function applyCard(card,pl,opp){
+  const e=card.eff;
+  // 永久卡牌处理
+  if(card.perm){
+    if(pl===player1)pPermCards.push({...card});
+    else cPermCards.push({...card});
+    return;
+  }
+  if(e.t==='instS')pl.score+=e.v;
+  else if(e.t==='steal'){const s=Math.min(opp.score,e.v);opp.score-=s;pl.score+=s;triggerAttackVFX(card,pl,opp)}
+  else if(e.t==='swapS'){const t=pl.score;pl.score=opp.score;opp.score=t;triggerAttackVFX(card,pl,opp)}
+  else if(card.dur>0){const ac={...card,rem:card.dur};if(card.target==='opp'){if(opp===player1)pCards.push(ac);else cCards.push(ac);triggerAttackVFX(card,pl,opp)}else{if(pl===player1)pCards.push(ac);else cCards.push(ac);if(e.t==='cpuDeb')triggerAttackVFX(card,pl,opp)}}
+}
 function tickCards(){pCards.forEach(c=>{if(c.rem>0)c.rem--});cCards.forEach(c=>{if(c.rem>0)c.rem--});pCards=pCards.filter(c=>c.rem>0);cCards=cCards.filter(c=>c.rem>0)}
 function showCardUI(){
   cardState='selecting';cardTimer=CARD_TIMER_S;cardStartT=performance.now();cardPickIdx=-1;
   cardChoices=randCards(3);
   const ct=document.getElementById('cardContainer');ct.innerHTML='';
   cardChoices.forEach((c,i)=>{const d=document.createElement('div');d.className='card-item '+c.css;
-    d.innerHTML=`<span class="card-rarity">${c.rl}</span><div class="card-icon">${c.icon}</div><div class="card-name">${c.name}</div><div class="card-desc">${c.desc}</div><div class="card-duration">${c.dur>0?'持续'+c.dur+'回合':'立即生效'}</div><div class="card-key">${i+1}</div>`;
+    d.innerHTML=`<span class="card-rarity">${c.perm?'永久':c.rl}</span><div class="card-icon">${c.icon}</div><div class="card-name">${c.name}</div><div class="card-desc">${c.desc}</div><div class="card-duration">${c.perm?'✦ 永久生效':c.dur>0?'持续'+c.dur+'回合':'立即生效'}</div><div class="card-key">${i+1}</div>`;
     d.onclick=()=>pickCard(i);ct.appendChild(d)});
   document.getElementById('cardOverlay').classList.add('show');tickCardTimer()}
 function tickCardTimer(){
@@ -154,7 +226,7 @@ function pickCard(idx,timeout=false){
   if(cardState!=='selecting')return;cardState='chosen';cardPickIdx=idx;
   document.querySelectorAll('.card-item').forEach((c,i)=>{if(i===idx)c.classList.add('selected');else{c.style.opacity='0.3';c.style.transform='scale(0.92)';c.style.pointerEvents='none'}});
   applyCard(cardChoices[idx],player1,player2);
-  const cpuC=randCards(3),cpuIdx=((cs)=>{let b=0,bp=0;cs.forEach((c,i)=>{const p={legendary:4,epic:3,rare:2,common:1}[c.rarity]+Math.random()*0.5;if(p>bp){bp=p;b=i}});return b})(cpuC);
+  const cpuC=randCardsAI(3),cpuIdx=((cs)=>{let b=0,bp=0;cs.forEach((c,i)=>{const p={legendary:4,epic:3,rare:2,common:1}[c.rarity]+Math.random()*0.5;if(p>bp){bp=p;b=i}});return b})(cpuC);
   applyCard(cpuC[cpuIdx],player2,player1);
   const h=document.querySelector('.card-hint');
   if(h)h.innerHTML=`你选择了 <span style="color:#ffcc44">${cardChoices[idx].name}</span>${timeout?' <span style="color:#ff6666">(超时随机)</span>':''}　|　马雪娆选了 <span style="color:#ff88aa">${cpuC[cpuIdx].name}</span>`;
@@ -163,6 +235,11 @@ function pickCard(idx,timeout=false){
   setTimeout(()=>{document.getElementById('cardOverlay').classList.remove('show');cardState='idle';startRoundPlay()},1800)}
 function updCardTags(){
   const ct=document.getElementById('activeCards');ct.innerHTML='';
+  // 永久卡牌（显示在前面）
+  pPermCards.forEach(c=>{const t=document.createElement('span');t.className='card-active-tag';
+    t.style.background='rgba(0,200,150,0.3)';t.style.color='#44ffcc';t.style.border='1px solid rgba(0,255,180,0.3)';
+    t.textContent=c.icon+' '+c.name+' [永久]';ct.appendChild(t)});
+  // 临时卡牌
   pCards.forEach(c=>{if(c.rem>0){const t=document.createElement('span');t.className='card-active-tag';
     if(c.target==='opp'){t.style.background='rgba(255,50,50,0.3)';t.style.color='#ff6666';t.textContent=c.icon+' [被施加]'+c.name+' ('+c.rem+')'}
     else{t.style.background='rgba(68,136,255,0.3)';t.style.color='#88bbff';t.textContent=c.icon+' '+c.name+' ('+c.rem+')'}
@@ -171,6 +248,7 @@ function updCardTags(){
     if(c.target==='opp'){t.style.background='rgba(180,60,255,0.3)';t.style.color='#cc88ff';t.textContent=c.icon+' [施加马雪娆]'+c.name+' ('+c.rem+')'}
     else{t.style.background='rgba(255,68,136,0.25)';t.style.color='#ff88aa';t.textContent=c.icon+' 马雪娆:'+c.name+' ('+c.rem+')'}
     ct.appendChild(t)}})}
+
 
 
 // ========== Difficulty System ==========
@@ -224,7 +302,7 @@ class PlayerState{
     this.roundJudged=false;this.currentJudgment=null;this.trackProgress=0;
     this.trackAfterImages=[];this.judgmentDisplay=null;this.comboDisplay=null;
     this.particles=[];this.fireParticles=[];this.spotlightEffect=null;
-    this.dancer=null;this.noteStates=[];this.roundNotes=[];this.inkMask=[];
+    this.dancer=null;this.noteStates=[];this.roundNotes=[];this.inkMask=[];this.baseNoteCount=0;
     this.aiInputTimer=0;this.aiInputIdx=0;this.aiSpaceScheduled=false;this.aiSpaceTime=0;this.aiWillMiss=false;
     this.comboShieldUsed=false;this.comboMilestone=null;
     if(side==='left'){this.themeColor='#4488ff';this.themeName='PLAYER';this.hairCol='#442200';this.outfitCol='#4466ff';this.shoeCol='#ff3366';this.accCol='#ff66aa'}
@@ -233,17 +311,17 @@ class PlayerState{
   reset(){this.score=0;this.combo=0;this.maxCombo=0;this.particles=[];this.fireParticles=[];this.spotlightEffect=null;this.judgmentDisplay=null;this.comboDisplay=null;this.dancer=new Dancer(this);this.comboShieldUsed=false;this.comboMilestone=null}
   resetRound(round,extraNotes){
     this.inputIndex=0;this.inputComplete=false;this.spaceProtected=true;this.roundJudged=false;this.currentJudgment=null;this.trackProgress=0;this.trackAfterImages=[];
-    // 复制音符，如果有addNotes效果则额外添加随机音符
-    this.roundNotes=[...round.notes];
-    if(extraNotes>0)for(let i=0;i<extraNotes;i++)this.roundNotes.push(DIR_KEYS[Math.floor(Math.random()*4)]);
+    // 复制音符，如果有addNotes效果则额外添加随机音符（总数不超过MAX_NOTES）
+    this.roundNotes=[...round.notes];this.baseNoteCount=round.notes.length;
+    if(extraNotes>0){const canAdd=Math.max(0,MAX_NOTES-this.roundNotes.length);for(let i=0;i<Math.min(extraNotes,canAdd);i++)this.roundNotes.push(DIR_KEYS[Math.floor(Math.random()*4)]);}
     this.noteStates=new Array(this.roundNotes.length).fill('pending');
     // 墨汁效果：随机标记部分音符为被遮挡
     const cards=this.isAI?cCards:pCards;
     this.inkMask=new Array(this.roundNotes.length).fill(false);
-    if(hasEff(cards,'inkBlot')){const inkCount=Math.max(1,Math.floor(this.roundNotes.length*0.4));const indices=[...Array(this.roundNotes.length).keys()];for(let i=indices.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[indices[i],indices[j]]=[indices[j],indices[i]]}for(let i=0;i<inkCount;i++)this.inkMask[indices[i]]=true}
+    if(hasEff(cards,'inkBlot')){const idx=Math.floor(Math.random()*this.roundNotes.length);this.inkMask[idx]=true}
     this.aiInputTimer=0;this.aiInputIdx=0;this.aiSpaceScheduled=false;this.aiWillMiss=false;this.comboShieldUsed=false;
     if(this.isAI){const cfg=DIFF_CONFIG[selectedDifficulty];this.aiWillMiss=Math.random()<cfg.judgeDist.miss}
-    if(!this.isAI){const ac=getEff(pCards,'autoIn');if(ac){const n=Math.min(ac,this.roundNotes.length);for(let i=0;i<n;i++){this.noteStates[i]='success';this.inputIndex=i+1}if(this.inputIndex>=this.roundNotes.length)this.inputComplete=true}}
+    if(!this.isAI){const ac=getEffAll(pCards,pPermCards,'autoIn');if(ac){const n=Math.min(ac,this.roundNotes.length);for(let i=0;i<n;i++){this.noteStates[i]='success';this.inputIndex=i+1}if(this.inputIndex>=this.roundNotes.length)this.inputComplete=true}}
     if(this.dancer)this.dancer.playAnimation('inputting')}
   getAreaX(){return this.side==='left'?0:HALF_W()}
   getAreaW(){return HALF_W()}
@@ -267,7 +345,7 @@ class Dancer{
     this.currentAnim='idle';this.animTime=0;this.animDuration=2000;this.glowColor='rgba(100,150,255,0.3)';this.glowIntensity=0;
     this.trailParticles=[];this.jumpY=0;this.spinAngle=0;this.squash=1;this.stretch=1;this.floorSparks=[];
     this.skinColor='#ffddcc';this.hairColor=p.hairCol;this.outfitColor=p.outfitCol;this.shoeColor=p.shoeCol;this.accColor=p.accCol;
-    this.aura=0;this.auraColor='#4488ff';
+    this.aura=0;this.auraColor='#4488ff';this.bodyScale=1.8;
   }
   setPosition(x,y){this.baseX=x;this.baseY=y}
   playAnimation(type){
@@ -307,10 +385,10 @@ class Dancer{
   _miss(p){if(p<0.15){const s=p/0.15;this.targetJoints.headTilt=-0.3*s;this.targetJoints.leftArmUpper=-0.3-1.2*s;this.targetJoints.rightArmUpper=0.3+1.2*s}else if(p<0.5){const s=(p-0.15)/0.35;this.targetJoints.bodyTilt=-0.4*s;this.targetJoints.bodyBend=0.3*s;this.targetJoints.leftLegUpper=0.1+0.5*s;this.targetJoints.rightLegUpper=-0.1+0.3*s;this.targetJoints.leftArmUpper=-1.5+0.3*s;this.targetJoints.rightArmUpper=1.5-0.3*s;this.jumpY=Math.sin(s*Math.PI)*-8}else if(p<0.7){const s=(p-0.5)/0.2;this.targetJoints.bodyBend=0.3+0.2*s;this.targetJoints.bodyTilt=-0.4-0.1*s;this.jumpY=0}else{const s=(p-0.7)/0.3;this.targetJoints.bodyBend*=(1-s*0.7);this.targetJoints.bodyTilt*=(1-s*0.6);this.targetJoints.headTilt*=(1-s*0.5);this.targetJoints.leftArmUpper+=(-0.3-this.targetJoints.leftArmUpper)*s*0.3;this.targetJoints.rightArmUpper+=(0.3-this.targetJoints.rightArmUpper)*s*0.3}}
   _trail(c1,c2){const hY=this.baseY-28+this.jumpY+Math.random()*15,col=Math.random()>0.5?c1:c2;this.trailParticles.push({x:this.baseX+(Math.random()-0.5)*20,y:hY-Math.random()*15,vx:(Math.random()-0.5)*25,vy:-12-Math.random()*20,life:1,decay:1.5+Math.random(),size:1.5+Math.random()*2,color:col})}
   draw(ctx,ts){
-    const x=this.baseX,y=this.baseY+this.jumpY,j=this.joints;
-    ctx.save();ctx.translate(x,y);ctx.scale(this.squash,this.stretch);
+    const x=this.baseX,y=this.baseY+this.jumpY,j=this.joints,bs=this.bodyScale;
+    ctx.save();ctx.translate(x,y);ctx.scale(this.squash*bs,this.stretch*bs);
     if(Math.abs(this.spinAngle)>0.01)ctx.rotate(this.spinAngle);
-    if(this.aura>0){ctx.save();const ag=ctx.createRadialGradient(0,-24,3,0,-24,40+Math.sin(ts*0.005)*7);ag.addColorStop(0,this.auraColor.replace(')',`,${this.aura*0.3})`).replace('rgb','rgba'));ag.addColorStop(1,'transparent');ctx.fillStyle=ag;ctx.beginPath();ctx.arc(0,-24,40+Math.sin(ts*0.005)*7,0,Math.PI*2);ctx.fill();ctx.restore()}
+    if(this.aura>0){ctx.save();const ag=ctx.createRadialGradient(0,-24,3,0,-24,35+Math.sin(ts*0.005)*6);ag.addColorStop(0,this.auraColor.replace(')',`,${this.aura*0.35})`).replace('rgb','rgba'));ag.addColorStop(1,'transparent');ctx.fillStyle=ag;ctx.beginPath();ctx.arc(0,-24,35+Math.sin(ts*0.005)*6,0,Math.PI*2);ctx.fill();ctx.restore()}
     if(this.glowIntensity>0.05){ctx.save();ctx.shadowColor=this.glowColor;ctx.shadowBlur=14*this.glowIntensity;ctx.beginPath();ctx.arc(0,-24,24,0,Math.PI*2);ctx.fillStyle=`rgba(255,255,255,${this.glowIntensity*0.1})`;ctx.fill();ctx.restore()}
     ctx.rotate(j.bodyTilt);
     const hs=10,nl=4,tl=20,ual=13,lal=11,ull=14,lll=13;
@@ -354,8 +432,8 @@ class Dancer{
     // trail particles
     this.trailParticles.forEach(tp=>{ctx.save();ctx.globalAlpha=Math.max(0,tp.life);ctx.beginPath();ctx.arc(tp.x,tp.y,tp.size*tp.life,0,Math.PI*2);ctx.fillStyle=tp.color;ctx.shadowColor=tp.color;ctx.shadowBlur=3;ctx.fill();ctx.restore()});
     this.floorSparks.forEach(s=>{ctx.save();ctx.globalAlpha=Math.max(0,s.life);ctx.beginPath();ctx.arc(s.x,s.y,s.size*s.life,0,Math.PI*2);ctx.fillStyle=s.color;ctx.shadowColor=s.color;ctx.shadowBlur=3;ctx.fill();ctx.restore()});
-    // shadow
-    ctx.save();const ss=1-Math.abs(this.jumpY)/100;ctx.globalAlpha=0.2*Math.max(0.2,ss);ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(this.baseX,this.baseY+30,12*Math.max(0.3,ss),2.5,0,0,Math.PI*2);ctx.fill();ctx.restore();
+    // shadow (适配bodyScale)
+    ctx.save();const ss=1-Math.abs(this.jumpY)/100;ctx.globalAlpha=0.25*Math.max(0.2,ss);ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(this.baseX,this.baseY+30,18*Math.max(0.3,ss),3.5,0,0,Math.PI*2);ctx.fill();ctx.restore();
   }
   _limb(ctx,x,y,len,w,col){ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(x-w/2,y);ctx.lineTo(x+w/2,y);ctx.lineTo(x+w/2-0.3,y+len);ctx.lineTo(x-w/2+0.3,y+len);ctx.closePath();ctx.fill();ctx.beginPath();ctx.arc(x,y,w/2,0,Math.PI*2);ctx.fill()}
   _shoe(ctx,x,y){ctx.fillStyle=this.shoeColor;ctx.beginPath();ctx.ellipse(x+1,y+1,5,2.5,0.2,0,Math.PI*2);ctx.fill();ctx.fillStyle='#222';ctx.fillRect(x-3,y+2,7,1.2)}
@@ -376,7 +454,8 @@ function startBG(){bgBeatIdx=0;if(bgInterval)clearInterval(bgInterval);bgInterva
 function stopBG(){if(bgInterval){clearInterval(bgInterval);bgInterval=null}}
 
 // ========== Rounds ==========
-function generateRounds(){rounds=[];for(let i=0;i<totalRounds;i++){const lv=Math.min(Math.floor(i/3)+1,9),nc=Math.min(lv+1,6),st=(i>0&&i%7===6),notes=[];for(let j=0;j<nc;j++)notes.push(DIR_KEYS[Math.floor(Math.random()*4)]);rounds.push({level:lv,notes,isShowtime:st})}}
+const MAX_NOTES=5; // 单回合最大音符数
+function generateRounds(){rounds=[];for(let i=0;i<totalRounds;i++){const lv=Math.min(Math.floor(i/3)+1,9),nc=Math.min(lv+1,MAX_NOTES),st=(i>0&&i%7===6),notes=[];for(let j=0;j<nc;j++)notes.push(DIR_KEYS[Math.floor(Math.random()*4)]);rounds.push({level:lv,notes,isShowtime:st})}}
 
 // ========== AI ==========
 function updateAI(dt,ts,p2){
@@ -430,7 +509,8 @@ function pickAINonMissJudgment(dist){
 }
 
 // ========== Game flow ==========
-function startGame(){audioCtx=new AudioCtx();document.getElementById('startScreen').style.display='none';gameState='playing';currentRound=-1;player1=new PlayerState('left',false);player2=new PlayerState('right',true);player1.reset();player2.reset();pCards=[];cCards=[];generateRounds();gameStartTime=performance.now();lastBeatTime=gameStartTime;beatCount=0;startBG();updCardTags();setTimeout(()=>nextRound(),MEASURE_MS*1.5)}
+let introStartTime=0;
+function startGame(){audioCtx=new AudioCtx();document.getElementById('startScreen').style.display='none';gameState='playing';currentRound=-1;player1=new PlayerState('left',false);player2=new PlayerState('right',true);player1.reset();player2.reset();pCards=[];cCards=[];pPermCards=[];cPermCards=[];generateRounds();gameStartTime=performance.now();introStartTime=gameStartTime;lastBeatTime=gameStartTime;beatCount=0;startBG();updCardTags();setTimeout(()=>nextRound(),MEASURE_MS*1.5)}
 let bothTimer=null;
 function nextRound(){if(currentRound>=0){tickCards();updCardTags()}currentRound++;if(currentRound>=totalRounds){endGame();return}if(currentRound>0&&currentRound%CARD_INTERVAL===0){gameState='cardSelect';showCardUI();return}startRoundPlay()}
 function startRoundPlay(){if(bothTimer){clearTimeout(bothTimer);bothTimer=null}const r=rounds[currentRound];
@@ -439,20 +519,22 @@ function startRoundPlay(){if(bothTimer){clearTimeout(bothTimer);bothTimer=null}c
   const p2Extra=getEff(cCards,'addNotes')||0;
   player1.resetRound(r,p1Extra);player2.resetRound(r,p2Extra);
   roundStartTime=performance.now();gameState='roundInput';setTimeout(()=>{if(player1)player1.spaceProtected=false;if(player2)player2.spaceProtected=false},MEASURE_MS/2)}
-function doPlayerJudgment(p,type){if(p.roundJudged)return;const cards=p.isAI?cCards:pCards;
+function doPlayerJudgment(p,type){if(p.roundJudged)return;const cards=p.isAI?cCards:pCards;const perm=p.isAI?cPermCards:pPermCards;
   // 黄金时刻：所有判定（包括miss）都变为perfect
   if(hasEff(cards,'allP'))type='perfect';
   // 不灭连击：combo不断 + 所有判定自动变为perfect
   if(hasEff(cards,'infCombo'))type='perfect';
-  p.roundJudged=true;p.currentJudgment=type;if(!p.isAI)playJudgment(type);const sm={perfect:1000,great:700,good:400,bad:100,miss:0};let rs=sm[type]||0;const sMul=getEff(cards,'sMult');if(sMul)rs=Math.floor(rs*sMul);
+  p.roundJudged=true;p.currentJudgment=type;if(!p.isAI)playJudgment(type);const sm={perfect:1000,great:700,good:400,bad:100,miss:0};let rs=sm[type]||0;
+  // sMult: 临时卡+永久卡叠加
+  const sMul=getEffAll(cards,perm,'sMult');if(sMul)rs=Math.floor(rs*sMul);
   // 对手减分debuff
   const sDebV=getEff(cards,'oppSDebuff');if(sDebV)rs=Math.floor(rs*(1-sDebV));
   // combo续接：great以上(perfect/great)都续combo
   if(type==='perfect'||type==='great'){
-    const pb=getEff(cards,'pBonus');if(pb&&type==='perfect')rs+=pb;
+    const pb=getEffAll(cards,perm,'pBonus');if(pb&&type==='perfect')rs+=pb;
     p.combo++;if(p.combo>p.maxCombo)p.maxCombo=p.combo;
     // combo加成系统：基础combo*100 + 档位加成系数
-    const cB=getEff(cards,'cBoost');
+    const cB=getEffAll(cards,perm,'cBoost');
     const baseComboBonus=cB?p.combo*100*cB:p.combo*100;
     // 档位加成：5连=1.2x, 10连=1.5x, 15连=2.0x
     let comboMult=1;
@@ -466,7 +548,7 @@ function doPlayerJudgment(p,type){if(p.roundJudged)return;const cards=p.isAI?cCa
     // combo里程碑特效
     if(p.combo===5||p.combo===10||p.combo===15)triggerComboMilestone(p,p.combo);
   }else{
-    if(hasEff(cards,'cShield')&&!p.comboShieldUsed&&p.combo>0){p.comboShieldUsed=true;showJText(p,type)}
+    if(hasEffAll(cards,perm,'cShield')&&!p.comboShieldUsed&&p.combo>0){p.comboShieldUsed=true;showJText(p,type)}
     else if(hasEff(cards,'infCombo')&&p.combo>0){showJText(p,type)}
     else{p.combo=0;showJText(p,type)}
   }
@@ -481,12 +563,12 @@ document.addEventListener('keydown',e=>{
   if(gameState!=='roundInput')return;const p=player1;if(p.roundJudged)return;
   if(e.code==='Space'){e.preventDefault();if(p.spaceProtected)return;if(!p.inputComplete){doPlayerJudgment(p,'miss');return}
     const now=performance.now(),tt=roundStartTime+TRACK_DURATION*JUDGE_LINE_RATIO,d=Math.abs(now-tt);
-    let jP=JUDGE_PERFECT,jGr=JUDGE_GREAT,jGo=JUDGE_GOOD,jB=JUDGE_BAD;const wv=getEff(pCards,'jWiden');if(wv){jP*=(1+wv);jGr*=(1+wv);jGo*=(1+wv);jB*=(1+wv)}
+    let jP=JUDGE_PERFECT,jGr=JUDGE_GREAT,jGo=JUDGE_GOOD,jB=JUDGE_BAD;const wv=getEffAll(pCards,pPermCards,'jWiden');if(wv){jP*=(1+wv);jGr*=(1+wv);jGo*=(1+wv);jB*=(1+wv)}
     p.trackAfterImages.push({progress:p.trackProgress,alpha:1,time:now});
     if(d<=jP)doPlayerJudgment(p,'perfect');else if(d<=jGr)doPlayerJudgment(p,'great');else if(d<=jGo)doPlayerJudgment(p,'good');else if(d<=jB)doPlayerJudgment(p,'bad');else doPlayerJudgment(p,'miss');return}
   const dir=DIR_MAP[e.key];if(!dir)return;e.preventDefault();if(p.inputComplete)return;
   if(dir===p.roundNotes[p.inputIndex]){p.noteStates[p.inputIndex]='success';p.inputIndex++;playSuccess();createInputParticle(p,p.inputIndex-1,true);if(p.inputIndex>=p.roundNotes.length)p.inputComplete=true}
-  else{playError();createInputParticle(p,p.inputIndex,false);for(let i=0;i<p.roundNotes.length;i++)p.noteStates[i]='pending';p.inputIndex=0;const ac=getEff(pCards,'autoIn');if(ac){const n=Math.min(ac,p.roundNotes.length);for(let i=0;i<n;i++){p.noteStates[i]='success';p.inputIndex=i+1}if(p.inputIndex>=p.roundNotes.length)p.inputComplete=true}}
+  else{playError();createInputParticle(p,p.inputIndex,false);for(let i=0;i<p.roundNotes.length;i++)p.noteStates[i]='pending';p.inputIndex=0;const ac=getEffAll(pCards,pPermCards,'autoIn');if(ac){const n=Math.min(ac,p.roundNotes.length);for(let i=0;i<n;i++){p.noteStates[i]='success';p.inputIndex=i+1}if(p.inputIndex>=p.roundNotes.length)p.inputComplete=true}}
 });
 
 // ========== Main loop ==========
@@ -497,19 +579,19 @@ function gameLoop(ts){
   if(player1)updateTrackP(ts,player1);if(player2)updateTrackP(ts,player2);
   if(player2)updateAI(dt,ts,player2);
   if(player1)updatePParts(dt,ts,player1);if(player2)updatePParts(dt,ts,player2);
-  [player1,player2].forEach(p=>{if(p&&p.dancer){p.dancer.setPosition(p.getCenterX(),p.getBoardY()-48);p.dancer.update(dt,ts)}});
+  [player1,player2].forEach(p=>{if(p&&p.dancer){p.dancer.setPosition(p.getCenterX(),p.getBoardY()-82);p.dancer.update(dt,ts)}});
   ctx.clearRect(0,0,W(),H());drawBG(ts);
   if(gameState==='idle')return;
-  if(gameState==='cardSelect'){if(player1&&player2){[player1,player2].forEach(p=>{if(!p)return;ctx.save();ctx.beginPath();ctx.rect(p.getAreaX(),0,p.getAreaW(),H());ctx.clip();drawStageFloor(ts,p);if(p.dancer)p.dancer.draw(ctx,ts);drawPScore(p);drawPLabel(p,ts);ctx.restore()});updateAndDrawAttackVFX(ts);drawDivider(ts)}return}
+  if(gameState==='cardSelect'){if(player1&&player2){[player1,player2].forEach(p=>{if(!p)return;ctx.save();ctx.beginPath();ctx.rect(p.getAreaX(),0,p.getAreaW(),H());ctx.clip();drawStageFloor(ts,p);if(p.dancer)p.dancer.draw(ctx,ts);drawPScore(p);drawPermPanel(p);drawPLabel(p,ts);ctx.restore()});updateAndDrawAttackVFX(ts);drawDivider(ts);drawIntroOverlay(ts)}return}
   if(gameState==='finished'){drawEndScreen();return}
   [player1,player2].forEach(p=>{if(!p)return;ctx.save();ctx.beginPath();ctx.rect(p.getAreaX(),0,p.getAreaW(),H());ctx.clip();
     drawStageFloor(ts,p);drawSpotP(ts,p);if(p.dancer)p.dancer.draw(ctx,ts);drawFireP(p);drawBoard(ts,p);drawTrack(ts,p);
-    if(currentRound>=0&&currentRound<totalRounds&&!p.roundJudged)drawNotes(ts,p);drawPParts(p);drawLvHint(ts,p);drawJText(ts,p);drawComboDisplay(ts,p);drawPScore(p);drawPLabel(p,ts);ctx.restore()});
-  updateAndDrawAttackVFX(ts);drawDivider(ts);drawRoundInfo(ts);drawScoreBar(ts);
+    if(currentRound>=0&&currentRound<totalRounds&&!p.roundJudged)drawNotes(ts,p);drawPParts(p);drawLvHint(ts,p);drawJText(ts,p);drawComboDisplay(ts,p);drawPScore(p);drawPermPanel(p);drawPLabel(p,ts);ctx.restore()});
+  updateAndDrawAttackVFX(ts);drawDivider(ts);drawRoundInfo(ts);drawScoreBar(ts);drawIntroOverlay(ts);
 }
 
 function updateBeat(ts){if(gameState==='idle'||gameState==='finished')return;const e=ts-gameStartTime,nb=Math.floor(e/BEAT_MS);if(nb>beatCount){beatCount=nb;lastBeatTime=ts;beatFlash=1;if(beatCount%4===0)keyBeatFlash=1}beatFlash=Math.max(0,beatFlash-0.04);keyBeatFlash=Math.max(0,keyBeatFlash-0.025)}
-function updateTrackP(ts,p){if(!p||gameState!=='roundInput'||p.roundJudged)return;const cards=p.isAI?cCards:pCards;const sv=getEff(cards,'tSlow');const spd=getEff(cards,'oppSpeed');let ed=TRACK_DURATION;if(sv)ed=ed/(1-sv);if(spd)ed=ed/(1+spd);/* oppSpeed加速音轨 */p.trackProgress=Math.min((ts-roundStartTime)/ed,1);if(p.trackProgress>=1&&!p.roundJudged)doPlayerJudgment(p,'miss');const dur=Math.max(1e3,BEAT_MS*3);for(let i=p.trackAfterImages.length-1;i>=0;i--){const img=p.trackAfterImages[i];img.alpha=1-(ts-img.time)/dur;if(img.alpha<=0)p.trackAfterImages.splice(i,1)}}
+function updateTrackP(ts,p){if(!p||gameState!=='roundInput'||p.roundJudged)return;const cards=p.isAI?cCards:pCards;const perm=p.isAI?cPermCards:pPermCards;const sv=getEffAll(cards,perm,'tSlow');const spd=getEff(cards,'oppSpeed');let ed=TRACK_DURATION;if(sv)ed=ed/(1-sv);if(spd)ed=ed/(1+spd);/* oppSpeed加速音轨 */p.trackProgress=Math.min((ts-roundStartTime)/ed,1);if(p.trackProgress>=1&&!p.roundJudged)doPlayerJudgment(p,'miss');const dur=Math.max(1e3,BEAT_MS*3);for(let i=p.trackAfterImages.length-1;i>=0;i--){const img=p.trackAfterImages[i];img.alpha=1-(ts-img.time)/dur;if(img.alpha<=0)p.trackAfterImages.splice(i,1)}}
 function updatePParts(dt,ts,p){if(!p)return;for(let i=p.particles.length-1;i>=0;i--){const pt=p.particles[i];pt.x+=pt.vx*dt;pt.y+=pt.vy*dt;pt.vy+=80*dt;pt.life-=pt.decay*dt;if(pt.life<=0)p.particles.splice(i,1)}
   if(p.combo<5){p.fireParticles=[];return}const bx=p.getBoardX(),by=p.getBoardY(),bw=p.getBoardW(),bh=p.getBoardH(),rate=p.combo>=15?5:p.combo>=10?4:p.combo>=8?3:2;
   for(let i=0;i<rate;i++){const s=Math.random();let x,y;if(s<0.3){x=bx+Math.random()*bw;y=by+bh}else if(s<0.6){x=bx;y=by+Math.random()*bh}else{x=bx+bw;y=by+Math.random()*bh}const cols=p.combo>=15?['#ff22ff','#ff66ff','#ffaaff','#fff','#ff88cc']:p.combo>=10?['#ff6600','#ffaa00','#ffdd00','#fff','#ff4400']:p.combo>=8?['#ff2200','#ff6600','#ffaa00','#ffdd00','#fff']:['#ff4400','#ff8800','#ffbb00'];p.fireParticles.push({x,y,vx:(Math.random()-0.5)*20,vy:-30-Math.random()*40,life:1,decay:1.5+Math.random(),size:2+Math.random()*3,color:cols[Math.floor(Math.random()*cols.length)]})}
@@ -519,6 +601,56 @@ function updatePParts(dt,ts,p){if(!p)return;for(let i=p.particles.length-1;i>=0;
 function drawBG(ts){const g=ctx.createLinearGradient(0,0,0,H());g.addColorStop(0,'#0a0a2a');g.addColorStop(0.5,'#0d1035');g.addColorStop(1,'#080820');ctx.fillStyle=g;ctx.fillRect(0,0,W(),H());const t=ts*0.0003;for(let i=0;i<50;i++){const x=(i*137.5+t*10*(i%3+1))%W(),y=(i*97.3)%H(),s=0.5+Math.sin(t+i)*0.5;ctx.fillStyle=`rgba(200,220,255,${0.2+s*0.4})`;ctx.beginPath();ctx.arc(x,y,1+s,0,Math.PI*2);ctx.fill()}const gw=ctx.createRadialGradient(W()/2,H()*0.8,0,W()/2,H()*0.8,W()*0.5);gw.addColorStop(0,`rgba(60,40,120,${0.15+beatFlash*0.1})`);gw.addColorStop(1,'transparent');ctx.fillStyle=gw;ctx.fillRect(0,0,W(),H())}
 
 function drawDivider(ts){const cx=HALF_W();ctx.save();const g=ctx.createLinearGradient(0,0,0,H());g.addColorStop(0,'transparent');g.addColorStop(0.2,`rgba(100,120,200,${0.4+beatFlash*0.2})`);g.addColorStop(0.5,`rgba(140,160,255,${0.6+beatFlash*0.3})`);g.addColorStop(0.8,`rgba(100,120,200,${0.4+beatFlash*0.2})`);g.addColorStop(1,'transparent');ctx.strokeStyle=g;ctx.lineWidth=2;ctx.shadowColor='rgba(100,140,255,0.5)';ctx.shadowBlur=10;ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,H());ctx.stroke();ctx.font='bold 18px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.shadowColor='#ff4488';ctx.shadowBlur=15;const vg=ctx.createLinearGradient(cx-15,30,cx+15,30);vg.addColorStop(0,'#ff6688');vg.addColorStop(1,'#ffaa44');ctx.fillStyle=vg;ctx.fillText('VS',cx,30);ctx.restore()}
+
+// 开局入场引导覆盖层 — 前3秒展示，之后淡出
+function drawIntroOverlay(ts){
+  const elapsed=ts-introStartTime;
+  const SHOW_DUR=2200,FADE_DUR=800;
+  if(elapsed>SHOW_DUR+FADE_DUR)return;
+  const alpha=elapsed>SHOW_DUR?1-(elapsed-SHOW_DUR)/FADE_DUR:Math.min(1,elapsed/300);
+  if(alpha<=0)return;
+  const hw=HALF_W(),h=H();
+  ctx.save();ctx.globalAlpha=alpha;
+  // 左半屏蓝色高光边框
+  ctx.strokeStyle='rgba(68,136,255,0.6)';ctx.lineWidth=4;
+  ctx.strokeRect(4,32,hw-8,h-36);
+  // 右半屏粉色高光边框
+  ctx.strokeStyle='rgba(255,68,136,0.6)';ctx.lineWidth=4;
+  ctx.strokeRect(hw+4,32,hw-8,h-36);
+  // 左侧中央大字提示
+  const slideIn=Math.min(1,elapsed/500);
+  const offsetL=(1-slideIn)*(-60);
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  // "你" 大标签
+  ctx.font='bold 32px Arial';ctx.fillStyle='#4488ff';
+  ctx.shadowColor='#4488ff';ctx.shadowBlur=20;
+  ctx.fillText('🎮 你',hw/2+offsetL,h*0.35);
+  ctx.shadowBlur=0;
+  ctx.font='14px Arial';ctx.fillStyle='rgba(180,210,255,0.9)';
+  ctx.fillText('⬅ ➡ 方向键输入',hw/2+offsetL,h*0.35+35);
+  ctx.fillText('空格键 确认节拍',hw/2+offsetL,h*0.35+55);
+  // "马雪娆" 大标签
+  const offsetR=(1-slideIn)*60;
+  ctx.font='bold 26px Arial';ctx.fillStyle='#ff4488';
+  ctx.shadowColor='#ff4488';ctx.shadowBlur=20;
+  ctx.fillText('🤖 马雪娆',hw+hw/2+offsetR,h*0.35);
+  ctx.shadowBlur=0;
+  ctx.font='14px Arial';ctx.fillStyle='rgba(255,180,200,0.9)';
+  ctx.fillText('电脑自动操作',hw+hw/2+offsetR,h*0.35+35);
+  // 中间VS
+  if(elapsed>400){
+    const vsAlpha=Math.min(1,(elapsed-400)/400);
+    ctx.globalAlpha=alpha*vsAlpha;
+    const vsScale=1+0.15*Math.sin(ts*0.005);
+    ctx.font=`bold ${Math.round(36*vsScale)}px Arial`;ctx.textAlign='center';
+    const vg2=ctx.createLinearGradient(hw-20,h*0.35,hw+20,h*0.35);
+    vg2.addColorStop(0,'#ff6688');vg2.addColorStop(1,'#ffaa44');
+    ctx.fillStyle=vg2;ctx.shadowColor='#ff4488';ctx.shadowBlur=25;
+    ctx.fillText('VS',hw,h*0.35);
+    ctx.shadowBlur=0;
+  }
+  ctx.restore();
+}
 
 function drawStageFloor(ts,p){const cx=p.getCenterX(),fy=p.getBoardY()-12;ctx.save();const fg=ctx.createRadialGradient(cx,fy,6,cx,fy,120);fg.addColorStop(0,`rgba(80,100,180,${0.08+beatFlash*0.05})`);fg.addColorStop(0.6,`rgba(40,50,100,${0.03+beatFlash*0.02})`);fg.addColorStop(1,'transparent');ctx.fillStyle=fg;ctx.fillRect(cx-140,fy-3,280,20);ctx.restore();
   // === Combo特殊背景效果 ===
@@ -561,7 +693,7 @@ function drawStageFloor(ts,p){const cx=p.getCenterX(),fy=p.getBoardY()-12;ctx.sa
     if(tier===3){
       const pulse=(ts*0.003)%1;
       ctx.save();ctx.globalAlpha=(1-pulse)*intensity*0.2;
-      ctx.beginPath();ctx.arc(cx,p.getBoardY()-48,30+pulse*120,0,Math.PI*2);
+      ctx.beginPath();ctx.arc(cx,p.getBoardY()-82,30+pulse*120,0,Math.PI*2);
       ctx.strokeStyle='#ff66ff';ctx.lineWidth=2*(1-pulse);ctx.shadowColor='#ff44ff';ctx.shadowBlur=10;ctx.stroke();ctx.restore();
     }
   }
@@ -596,15 +728,50 @@ function drawBoard(ts,p){const bx=p.getBoardX(),by=p.getBoardY(),bw=p.getBoardW(
 function drawTrack(ts,p){const tx=p.getTrackX(),ty=p.getTrackY(),tw=p.getTrackW(),th=p.getTrackH(),jx=tx+tw*JUDGE_LINE_RATIO,ia=gameState==='roundInput'&&!p.roundJudged;ctx.save();ctx.shadowColor='rgba(50,80,160,0.3)';ctx.shadowBlur=8;rr(tx,ty,tw,th,th/2);const tg=ctx.createLinearGradient(tx,ty,tx,ty+th);tg.addColorStop(0,'rgba(18,22,50,0.92)');tg.addColorStop(1,'rgba(12,15,35,0.95)');ctx.fillStyle=tg;ctx.fill();ctx.strokeStyle=`rgba(70,100,180,${0.35+beatFlash*0.2})`;ctx.lineWidth=1;ctx.stroke();ctx.restore();
   ctx.save();ctx.globalAlpha=0.1;for(let i=1;i<=7;i++){const lx=tx+(tw/8)*i;ctx.beginPath();ctx.moveTo(lx,ty+2);ctx.lineTo(lx,ty+th-2);ctx.strokeStyle='#5577aa';ctx.lineWidth=1;ctx.stroke()}ctx.restore();
   const fl=0.6+Math.sin(ts*0.008)*0.4;ctx.save();ctx.shadowColor=`rgba(255,100,100,${fl*0.5})`;ctx.shadowBlur=6;ctx.beginPath();ctx.moveTo(jx,ty+2);ctx.lineTo(jx,ty+th-2);ctx.strokeStyle=`rgba(255,120,120,${fl})`;ctx.lineWidth=2;ctx.stroke();ctx.beginPath();ctx.moveTo(jx,ty-2);ctx.lineTo(jx+3,ty+3);ctx.lineTo(jx,ty+8);ctx.lineTo(jx-3,ty+3);ctx.closePath();ctx.fillStyle=`rgba(255,130,130,${fl})`;ctx.fill();ctx.restore();
-  ctx.save();const zw=tw*(JUDGE_BAD/TRACK_DURATION);ctx.globalAlpha=0.05;ctx.fillStyle='#ffaaaa';ctx.fillRect(jx-zw,ty+1,zw*2,th-2);ctx.restore();
+  ctx.save();const zw=tw*(JUDGE_BAD/TRACK_DURATION);
+  // 分层判定区域绘制（应用jWiden加成）
+  const pCards_=p.isAI?cCards:pCards,pPerm_=p.isAI?cPermCards:pPermCards;
+  const wv_=getEffAll(pCards_,pPerm_,'jWiden');const wMul=wv_?(1+wv_):1;
+  const zwBad=tw*(JUDGE_BAD*wMul/TRACK_DURATION);
+  const zwGood=tw*(JUDGE_GOOD*wMul/TRACK_DURATION);
+  const zwGreat=tw*(JUDGE_GREAT*wMul/TRACK_DURATION);
+  const zwPerf=tw*(JUDGE_PERFECT*wMul/TRACK_DURATION);
+  // Bad区域（最外层 - 淡红）
+  ctx.globalAlpha=0.06;ctx.fillStyle='#ff6666';ctx.fillRect(jx-zwBad,ty+1,zwBad*2,th-2);
+  // Good区域（绿）
+  ctx.globalAlpha=0.08;ctx.fillStyle='#44ff88';ctx.fillRect(jx-zwGood,ty+1,zwGood*2,th-2);
+  // Great区域（青）
+  ctx.globalAlpha=0.10;ctx.fillStyle='#44ddff';ctx.fillRect(jx-zwGreat,ty+1,zwGreat*2,th-2);
+  // Perfect区域（金 - 最内层，最亮）
+  ctx.globalAlpha=0.14;ctx.fillStyle='#ffdd44';ctx.fillRect(jx-zwPerf,ty+1,zwPerf*2,th-2);
+  // jWiden加成时的呼吸光效
+  if(wv_){
+    const breath=0.5+Math.sin(ts*0.006)*0.5;
+    ctx.globalAlpha=0.04+breath*0.03;ctx.fillStyle='#44ffcc';ctx.fillRect(jx-zwBad,ty+1,zwBad*2,th-2);
+    // 外边缘发光线
+    ctx.globalAlpha=0.2+breath*0.15;ctx.strokeStyle='#44ffcc';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(jx-zwBad,ty+2);ctx.lineTo(jx-zwBad,ty+th-2);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(jx+zwBad,ty+2);ctx.lineTo(jx+zwBad,ty+th-2);ctx.stroke();
+  }
+  ctx.restore();
   p.trackAfterImages.forEach(img=>{if(img.alpha<=0)return;const cx=tx+tw*img.progress,cy=ty+th/2;ctx.save();ctx.globalAlpha=img.alpha*0.4;ctx.beginPath();ctx.arc(cx,cy,th/2-2,0,Math.PI*2);ctx.fillStyle='#ffcc44';ctx.shadowColor='#ffaa00';ctx.shadowBlur=5;ctx.fill();ctx.restore()});
   if(ia){const cx=tx+tw*p.trackProgress,cy=ty+th/2,rad=th/2-2;ctx.save();ctx.beginPath();ctx.arc(cx,cy,rad+2,0,Math.PI*2);ctx.strokeStyle=p.inputComplete?`rgba(255,200,50,${0.5+Math.sin(ts*0.012)*0.3})`:`rgba(100,180,255,${0.3+Math.sin(ts*0.008)*0.2})`;ctx.lineWidth=1.5;ctx.shadowColor=p.inputComplete?'#ffcc00':'#4488ff';ctx.shadowBlur=p.inputComplete?10:6;ctx.stroke();ctx.restore();ctx.save();const cg=ctx.createRadialGradient(cx-1,cy-1,0,cx,cy,rad);if(p.inputComplete){cg.addColorStop(0,'#fff');cg.addColorStop(0.4,'#ffee44');cg.addColorStop(1,'#ddaa00');ctx.shadowColor='#ffcc00';ctx.shadowBlur=8}else{cg.addColorStop(0,'#fff');cg.addColorStop(0.4,'#66aaff');cg.addColorStop(1,'#3366cc');ctx.shadowColor='#4488ff';ctx.shadowBlur=6}ctx.beginPath();ctx.arc(cx,cy,rad,0,Math.PI*2);ctx.fillStyle=cg;ctx.fill();ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=1;ctx.stroke();ctx.restore()}}
 
 function drawNotes(ts,p){if(currentRound<0||currentRound>=totalRounds||!p.roundNotes)return;const notes=p.roundNotes,bx=p.getBoardX(),by=p.getBoardY(),bw=p.getBoardW(),bh=p.getBoardH(),nw0=34,nh0=34,gap=4;let sc1=1;const tnw=notes.length*(nw0+gap)-gap;if(tnw>bw-12)sc1=(bw-12)/tnw;const nw=nw0*sc1,nh=nh0*sc1,gp=gap*sc1;const tw=notes.length*(nw+gp)-gp,sx=bx+(bw-tw)/2,ny0=by+(bh-nh)/2,el=ts-roundStartTime;
-  notes.forEach((dir,i)=>{const st=p.noteStates[i],nx=sx+i*(nw+gp),anim=Math.max(0,Math.min((el-i*18)/200,1)),ao=(1-eob(anim))*12,ny=ny0-Math.max(0,ao),sc=Math.max(0.3,eob(anim));ctx.save();ctx.translate(nx+nw/2,ny+nh/2);ctx.scale(sc,sc);ctx.translate(-(nx+nw/2),-(ny+nh/2));const r=7;rr(nx,ny,nw,nh,r);if(st==='success'){ctx.shadowColor='#ffcc00';ctx.shadowBlur=8;const g=ctx.createLinearGradient(nx,ny,nx,ny+nh);g.addColorStop(0,'#ffee44');g.addColorStop(1,'#ddaa00');ctx.fillStyle=g}else{ctx.shadowColor='#4488ff';ctx.shadowBlur=6;const g=ctx.createLinearGradient(nx,ny,nx,ny+nh);g.addColorStop(0,'#5599ff');g.addColorStop(1,'#3366cc');ctx.fillStyle=g}ctx.fill();ctx.strokeStyle=st==='success'?'rgba(255,238,100,0.8)':'rgba(100,160,255,0.6)';ctx.lineWidth=1.2;ctx.stroke();
+  notes.forEach((dir,i)=>{const st=p.noteStates[i],nx=sx+i*(nw+gp),anim=Math.max(0,Math.min((el-i*18)/200,1)),ao=(1-eob(anim))*12,ny=ny0-Math.max(0,ao),sc=Math.max(0.3,eob(anim));
+    const isExtra=i>=p.baseNoteCount; // 额外按键标记
+    ctx.save();ctx.translate(nx+nw/2,ny+nh/2);ctx.scale(sc,sc);ctx.translate(-(nx+nw/2),-(ny+nh/2));const r=7;rr(nx,ny,nw,nh,r);
+    if(st==='success'){ctx.shadowColor='#ffcc00';ctx.shadowBlur=8;const g=ctx.createLinearGradient(nx,ny,nx,ny+nh);g.addColorStop(0,'#ffee44');g.addColorStop(1,'#ddaa00');ctx.fillStyle=g}
+    else if(isExtra){
+      // 额外按键：红色系特殊标注
+      ctx.shadowColor='#ff2244';ctx.shadowBlur=10;const g=ctx.createLinearGradient(nx,ny,nx,ny+nh);g.addColorStop(0,'#ff4466');g.addColorStop(1,'#cc2244');ctx.fillStyle=g}
+    else{ctx.shadowColor='#4488ff';ctx.shadowBlur=6;const g=ctx.createLinearGradient(nx,ny,nx,ny+nh);g.addColorStop(0,'#5599ff');g.addColorStop(1,'#3366cc');ctx.fillStyle=g}
+    ctx.fill();
+    ctx.strokeStyle=st==='success'?'rgba(255,238,100,0.8)':isExtra?`rgba(255,80,80,${0.6+Math.sin(ts*0.01)*0.3})`:'rgba(100,160,255,0.6)';ctx.lineWidth=isExtra?2:1.2;ctx.stroke();
+    // 额外按键：顶部"💣"标记
+    if(isExtra&&st!=='success'){ctx.font=`${Math.floor(9*sc1)}px Arial`;ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillStyle='#ff8844';ctx.shadowBlur=0;ctx.fillText('💣',nx+nw/2,ny-1)}
     // 绘制音符文字（如果有墨汁遮挡且未被击中，则显示墨汁而非方向键）
     if(p.inkMask&&p.inkMask[i]&&st!=='success'){
-      // 墨汁效果：画一团黑色墨汁遮挡文字
       ctx.fillStyle='#111';ctx.shadowColor='#000';ctx.shadowBlur=4;
       ctx.beginPath();ctx.arc(nx+nw/2,ny+nh/2,nw*0.35,0,Math.PI*2);ctx.fill();
       ctx.beginPath();ctx.arc(nx+nw*0.35,ny+nh*0.38,nw*0.18,0,Math.PI*2);ctx.fill();
@@ -612,9 +779,9 @@ function drawNotes(ts,p){if(currentRound<0||currentRound>=totalRounds||!p.roundN
       ctx.beginPath();ctx.arc(nx+nw*0.3,ny+nh*0.65,nw*0.14,0,Math.PI*2);ctx.fill();
       ctx.font=`bold ${Math.floor(10*sc1)}px Arial`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#333';ctx.shadowBlur=0;ctx.fillText('?',nx+nw/2,ny+nh/2);
     }else{
-      ctx.fillStyle=st==='success'?'#553300':'#fff';ctx.font=`bold ${Math.floor(16*sc1)}px Arial`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.shadowBlur=0;ctx.fillText(dir,nx+nw/2,ny+nh/2);
+      ctx.fillStyle=st==='success'?'#553300':isExtra?'#ffe0e0':'#fff';ctx.font=`bold ${Math.floor(16*sc1)}px Arial`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.shadowBlur=0;ctx.fillText(dir,nx+nw/2,ny+nh/2);
     }
-    if(i===p.inputIndex&&!p.inputComplete&&st==='pending'&&!p.isAI){ctx.strokeStyle=`rgba(255,255,255,${0.4+Math.sin(ts*0.008)*0.3})`;ctx.lineWidth=2;rr(nx,ny,nw,nh,r);ctx.stroke()}ctx.restore()})}
+    if(i===p.inputIndex&&!p.inputComplete&&st==='pending'&&!p.isAI){ctx.strokeStyle=isExtra?`rgba(255,120,120,${0.5+Math.sin(ts*0.008)*0.4})`:`rgba(255,255,255,${0.4+Math.sin(ts*0.008)*0.3})`;ctx.lineWidth=2;rr(nx,ny,nw,nh,r);ctx.stroke()}ctx.restore()})}
 
 function drawLvHint(ts,p){if(currentRound<0)return;const bx=p.getBoardX(),by=p.getBoardY(),x=bx+8,y=by-8;let text='',alpha=1,isST=false;if(gameState==='roundInput'&&!p.roundJudged){const r=rounds[currentRound];if(r.isShowtime){text='SHOW TIME';isST=true}else text=`LV.${String(r.level).padStart(2,'0')}`}else if(currentRound+1<totalRounds){const nr=rounds[currentRound+1];if(nr.isShowtime){text='SHOW TIME';isST=true}else text=`LV.${String(nr.level).padStart(2,'0')}`;alpha=0.4}if(!text)return;ctx.save();ctx.globalAlpha=alpha;if(isST){ctx.font='bold 12px Arial';ctx.textAlign='left';ctx.textBaseline='bottom';ctx.shadowColor='#ff44aa';ctx.shadowBlur=8;ctx.fillStyle='#ff66cc';ctx.fillText(text,x,y)}else{ctx.font='bold 11px Arial';ctx.textAlign='left';ctx.textBaseline='bottom';ctx.fillStyle='#88aadd';ctx.fillText(text,x,y)}ctx.restore()}
 
@@ -693,9 +860,139 @@ function triggerComboMilestone(p,combo){
   p.comboMilestone={combo,time:performance.now(),duration:2500};
 }
 
-function drawPScore(p){const ax=p.getAreaX(),aw=p.getAreaW();ctx.save();ctx.font='bold 20px Arial';ctx.textBaseline='top';ctx.fillStyle='#fff';ctx.shadowColor=p.themeColor;ctx.shadowBlur=6;if(p.side==='left'){ctx.textAlign='left';ctx.fillText(`${p.score}`,ax+12,50);ctx.font='11px Arial';ctx.fillStyle='#8899bb';ctx.shadowBlur=0;if(p.combo>0){ctx.fillStyle=p.combo>=15?'#ff88ff':p.combo>=10?'#ffaa44':p.combo>=5?'#ffcc44':'#ffaa44';ctx.fillText(`COMBO ${p.combo}${p.combo>=15?' ×2.0':p.combo>=10?' ×1.5':p.combo>=5?' ×1.2':''}`,ax+12,74)}ctx.fillStyle='#6677aa';ctx.fillText(`MAX ${p.maxCombo}`,ax+12,89)}else{ctx.textAlign='right';ctx.fillText(`${p.score}`,ax+aw-12,50);ctx.font='11px Arial';ctx.fillStyle='#8899bb';ctx.shadowBlur=0;if(p.combo>0){ctx.fillStyle=p.combo>=15?'#ff88ff':p.combo>=10?'#ffaa44':p.combo>=5?'#ffcc44':'#ffaa44';ctx.fillText(`COMBO ${p.combo}${p.combo>=15?' ×2.0':p.combo>=10?' ×1.5':p.combo>=5?' ×1.2':''}`,ax+aw-12,74)}ctx.fillStyle='#6677aa';ctx.fillText(`MAX ${p.maxCombo}`,ax+aw-12,89)}ctx.restore()}
+function drawPScore(p){const ax=p.getAreaX(),aw=p.getAreaW();const cards=p.isAI?cCards:pCards,perm=p.isAI?cPermCards:pPermCards;
+  ctx.save();ctx.font='bold 20px Arial';ctx.textBaseline='top';ctx.fillStyle='#fff';ctx.shadowColor=p.themeColor;ctx.shadowBlur=6;
+  if(p.side==='left'){
+    ctx.textAlign='left';ctx.fillText(`${p.score}`,ax+12,50);ctx.font='11px Arial';ctx.fillStyle='#8899bb';ctx.shadowBlur=0;
+    if(p.combo>0){ctx.fillStyle=p.combo>=15?'#ff88ff':p.combo>=10?'#ffaa44':p.combo>=5?'#ffcc44':'#ffaa44';ctx.fillText(`COMBO ${p.combo}${p.combo>=15?' ×2.0':p.combo>=10?' ×1.5':p.combo>=5?' ×1.2':''}`,ax+12,74)}
+    ctx.fillStyle='#6677aa';ctx.fillText(`MAX ${p.maxCombo}`,ax+12,89);
+    // 常驻加成面板
+    drawBoostPanel(ax+10,104,cards,perm,p.side);
+  }else{
+    ctx.textAlign='right';ctx.fillText(`${p.score}`,ax+aw-12,50);ctx.font='11px Arial';ctx.fillStyle='#8899bb';ctx.shadowBlur=0;
+    if(p.combo>0){ctx.fillStyle=p.combo>=15?'#ff88ff':p.combo>=10?'#ffaa44':p.combo>=5?'#ffcc44':'#ffaa44';ctx.fillText(`COMBO ${p.combo}${p.combo>=15?' ×2.0':p.combo>=10?' ×1.5':p.combo>=5?' ×1.2':''}`,ax+aw-12,74)}
+    ctx.fillStyle='#6677aa';ctx.fillText(`MAX ${p.maxCombo}`,ax+aw-12,89);
+    // 常驻加成面板
+    drawBoostPanel(ax+aw-10,104,cards,perm,p.side);
+  }
+  ctx.restore()}
+// 加成面板绘制（临时+永久合并显示）
+function drawBoostPanel(x,y,cards,perm,side){
+  const boosts=[];
+  const sm=getEffAll(cards,perm,'sMult');if(sm){const pct=Math.round((sm-1)*100);if(pct>0)boosts.push({icon:'💰',text:`得分+${pct}%`,col:'#ffcc44'})}
+  const jw=getEffAll(cards,perm,'jWiden');if(jw){const pct=Math.round(jw*100);boosts.push({icon:'🎯',text:`判定+${pct}%`,col:'#44ffcc'})}
+  const pb=getEffAll(cards,perm,'pBonus');if(pb)boosts.push({icon:'💎',text:`P+${pb}`,col:'#ffdd00'});
+  const cb=getEffAll(cards,perm,'cBoost');if(cb)boosts.push({icon:'🔥',text:`连击×${cb.toFixed(1)}`,col:'#ff8844'});
+  const ts_=getEffAll(cards,perm,'tSlow');if(ts_){const pct=Math.round(ts_*100);boosts.push({icon:'⏰',text:`减速${pct}%`,col:'#88ddff'})}
+  const ai=getEffAll(cards,perm,'autoIn');if(ai)boosts.push({icon:'💪',text:`自动${ai}键`,col:'#88ff88'});
+  if(hasEffAll(cards,perm,'cShield'))boosts.push({icon:'🛡️',text:'护盾',col:'#88bbff'});
+  if(hasEff(cards,'allP'))boosts.push({icon:'👑',text:'全P',col:'#ffaa00'});
+  if(hasEff(cards,'infCombo'))boosts.push({icon:'♾️',text:'不灭',col:'#ff66ff'});
+  // 对手debuff
+  const sd=getEff(cards,'oppSDebuff');if(sd)boosts.push({icon:'🕳️',text:`扣${Math.round(sd*100)}%`,col:'#ff4466'});
+  if(boosts.length===0)return;
+  const isLeft=side==='left';
+  ctx.save();ctx.textAlign=isLeft?'left':'right';ctx.textBaseline='top';ctx.font='bold 9px Arial';
+  boosts.forEach((b,i)=>{
+    ctx.globalAlpha=0.85;ctx.fillStyle=b.col;
+    ctx.fillText(`${b.icon}${b.text}`,x,y+i*13);
+  });
+  ctx.restore();
+}
+// 永久构筑面板 — 单独展示已获得的永久属性提升
+function drawPermPanel(p){
+  const perm=p.isAI?cPermCards:pPermCards;
+  if(perm.length===0)return;
+  const ax=p.getAreaX(),aw=p.getAreaW(),isLeft=p.side==='left';
+  // 计算永久加成数据
+  const perks=[];
+  let sm=1;perm.forEach(c=>{if(c.eff.t==='sMult')sm*=c.eff.v});
+  if(sm>1)perks.push({icon:'💰',label:'得分',val:`+${Math.round((sm-1)*100)}%`,col:'#ffcc44'});
+  let jw=0;perm.forEach(c=>{if(c.eff.t==='jWiden')jw+=c.eff.v});
+  if(jw>0)perks.push({icon:'🎯',label:'判定',val:`+${Math.round(jw*100)}%`,col:'#44ffcc'});
+  let pb=0;perm.forEach(c=>{if(c.eff.t==='pBonus')pb+=c.eff.v});
+  if(pb>0)perks.push({icon:'💎',label:'P加分',val:`+${pb}`,col:'#ffdd00'});
+  let cb=0;perm.forEach(c=>{if(c.eff.t==='cBoost')cb=Math.max(cb,c.eff.v)});
+  if(cb>1)perks.push({icon:'🔥',label:'连击',val:`×${cb.toFixed(1)}`,col:'#ff8844'});
+  let ts_=0;perm.forEach(c=>{if(c.eff.t==='tSlow')ts_+=c.eff.v});
+  if(ts_>0)perks.push({icon:'⏰',label:'减速',val:`${Math.round(ts_*100)}%`,col:'#88ddff'});
+  let ai=0;perm.forEach(c=>{if(c.eff.t==='autoIn')ai=Math.max(ai,c.eff.v)});
+  if(ai>0)perks.push({icon:'💪',label:'自动',val:`${ai}键`,col:'#88ff88'});
+  if(perm.some(c=>c.eff.t==='cShield'))perks.push({icon:'🛡️',label:'护盾',val:'ON',col:'#88bbff'});
+  if(perks.length===0)return;
+  // 面板位置：屏幕底部上方
+  const panelW=Math.min(160,aw*0.55);
+  const lineH=16,padY=6,padX=8;
+  const panelH=20+perks.length*lineH+padY*2;
+  const px=isLeft?ax+8:ax+aw-8-panelW;
+  const py=H()-panelH-12;
+  ctx.save();
+  // 底板
+  ctx.globalAlpha=0.6;
+  ctx.fillStyle='rgba(0,20,30,0.75)';
+  ctx.strokeStyle='rgba(0,255,180,0.25)';
+  ctx.lineWidth=1;
+  const r=8;
+  ctx.beginPath();ctx.moveTo(px+r,py);ctx.lineTo(px+panelW-r,py);ctx.arcTo(px+panelW,py,px+panelW,py+r,r);ctx.lineTo(px+panelW,py+panelH-r);ctx.arcTo(px+panelW,py+panelH,px+panelW-r,py+panelH,r);ctx.lineTo(px+r,py+panelH);ctx.arcTo(px,py+panelH,px,py+panelH-r,r);ctx.lineTo(px,py+r);ctx.arcTo(px,py,px+r,py,r);ctx.closePath();
+  ctx.fill();ctx.stroke();
+  // 标题
+  ctx.globalAlpha=0.9;ctx.font='bold 10px Arial';ctx.textAlign='left';ctx.textBaseline='top';
+  ctx.fillStyle='#44ffcc';ctx.shadowColor='#44ffcc';ctx.shadowBlur=4;
+  ctx.fillText('⚡ 永久构筑',px+padX,py+padY);
+  ctx.shadowBlur=0;
+  // 属性列表
+  ctx.font='9px Arial';
+  perks.forEach((pk,i)=>{
+    const ly=py+padY+18+i*lineH;
+    // 属性名
+    ctx.globalAlpha=0.7;ctx.fillStyle='#8899aa';ctx.textAlign='left';
+    ctx.fillText(`${pk.icon} ${pk.label}`,px+padX,ly);
+    // 属性值
+    ctx.globalAlpha=1;ctx.fillStyle=pk.col;ctx.font='bold 10px Arial';ctx.textAlign='right';
+    ctx.fillText(pk.val,px+panelW-padX,ly);
+    ctx.font='9px Arial';
+  });
+  ctx.restore();
+}
 
-function drawPLabel(p,ts){const cx=p.getCenterX();ctx.save();ctx.font='bold 13px Arial';ctx.textAlign='center';ctx.textBaseline='top';ctx.shadowColor=p.themeColor;ctx.shadowBlur=8;ctx.fillStyle=p.themeColor;const label=p.isAI?p.themeName+' ('+DIFF_CONFIG[selectedDifficulty].label+')':p.themeName;ctx.fillText(label,cx,10);ctx.restore()}
+function drawPLabel(p,ts){
+  const ax=p.getAreaX(),aw=p.getAreaW(),isLeft=p.side==='left';
+  ctx.save();
+  // 顶部身份色带
+  const barH=28;
+  const barG=ctx.createLinearGradient(ax,0,ax+aw,0);
+  if(isLeft){
+    barG.addColorStop(0,'rgba(30,60,160,0.55)');barG.addColorStop(0.7,'rgba(30,60,160,0.25)');barG.addColorStop(1,'rgba(30,60,160,0.05)');
+  }else{
+    barG.addColorStop(0,'rgba(160,30,80,0.05)');barG.addColorStop(0.3,'rgba(160,30,80,0.25)');barG.addColorStop(1,'rgba(160,30,80,0.55)');
+  }
+  ctx.fillStyle=barG;ctx.fillRect(ax,0,aw,barH);
+  // 底部发光线
+  const breath=0.5+0.5*Math.sin(ts*0.003);
+  ctx.strokeStyle=isLeft?`rgba(68,136,255,${0.3+breath*0.2})`:`rgba(255,68,136,${0.3+breath*0.2})`;
+  ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(ax,barH);ctx.lineTo(ax+aw,barH);ctx.stroke();
+  // 身份标签
+  const tx=isLeft?ax+14:ax+aw-14;
+  ctx.textAlign=isLeft?'left':'right';ctx.textBaseline='middle';
+  // 图标
+  const icon=isLeft?'🎮':'🤖';
+  ctx.font='bold 15px Arial';ctx.fillStyle='#fff';
+  ctx.fillText(icon,tx,barH/2);
+  // 名称
+  const nameX=isLeft?tx+22:tx-22;
+  ctx.textAlign=isLeft?'left':'right';
+  ctx.font='bold 14px Arial';
+  ctx.shadowColor=p.themeColor;ctx.shadowBlur=10;ctx.fillStyle='#fff';
+  const name=isLeft?'YOU':p.themeName;
+  ctx.fillText(name,nameX,barH/2-1);
+  ctx.shadowBlur=0;
+  // 副标签
+  const subX=isLeft?nameX+ctx.measureText(name).width+8:nameX-ctx.measureText(name).width-8;
+  ctx.font='10px Arial';ctx.fillStyle='rgba(180,200,230,0.6)';
+  const sub=isLeft?'← 键盘控制':'('+DIFF_CONFIG[selectedDifficulty].label+')';
+  ctx.fillText(sub,subX,barH/2);
+  ctx.restore();
+}
 
 function drawRoundInfo(ts){ctx.save();ctx.font='11px Arial';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle='rgba(150,170,210,0.5)';const ri=`ROUND ${currentRound+1}/${totalRounds}`;const nextCard=CARD_INTERVAL-((currentRound+1)%CARD_INTERVAL);const cardHint=nextCard<=CARD_INTERVAL&&(currentRound+1)<totalRounds?`  ⟨选牌:${nextCard===CARD_INTERVAL?CARD_INTERVAL:nextCard}轮后⟩`:'';ctx.fillText(ri+cardHint,HALF_W(),48);ctx.restore()}
 
@@ -719,6 +1016,10 @@ function drawEndScreen(){
   ctx.font='bold 28px Arial';ctx.fillStyle='#fff';ctx.shadowColor='#4488ff';ctx.shadowBlur=8;ctx.fillText(`${player1.score}`,lcx,cy+15);
   ctx.shadowColor='#ff4488';ctx.fillText(`${player2.score}`,rcx,cy+15);
   ctx.font='16px Arial';ctx.fillStyle='#aabbdd';ctx.shadowBlur=0;ctx.fillText(`MAX COMBO: ${player1.maxCombo}`,lcx,cy+50);ctx.fillText(`MAX COMBO: ${player2.maxCombo}`,rcx,cy+50);
+  // 永久构筑展示
+  if(pPermCards.length>0){
+    ctx.font='bold 11px Arial';ctx.fillStyle='#44ffcc';ctx.fillText('构筑: '+pPermCards.map(c=>c.icon+c.name).join(' '),lcx,cy+70);
+  }
   // Grade
   function grade(s){const mx=totalRounds*1800,r=s/mx;if(r>0.95)return'SSS';if(r>0.85)return'SS';if(r>0.75)return'S';if(r>0.6)return'A';if(r>0.45)return'B';return'C'}
   const gc={SSS:'#ffdd00',SS:'#ffaa44',S:'#ff66cc',A:'#44ddff',B:'#44ff88',C:'#aaa'};
