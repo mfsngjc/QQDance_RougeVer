@@ -66,18 +66,18 @@ canvas{display:block}
   <h1>QQ炫舞</h1>
   <div class="subtitle">双 人 对 战 模 式</div>
   <div class="difficulty-section">
-    <div class="difficulty-label">选择马雪娆难度</div>
+    <div class="difficulty-label">选择电脑玩家难度</div>
     <div class="difficulty-btns">
       <button class="diff-btn easy" data-diff="easy" onclick="selectDiff('easy')">简 单</button>
       <button class="diff-btn normal selected" data-diff="normal" onclick="selectDiff('normal')">普 通</button>
       <button class="diff-btn hard" data-diff="hard" onclick="selectDiff('hard')">困 难</button>
     </div>
-    <div class="diff-desc" id="diffDesc">马雪娆会偶尔失误，适合休闲对战</div>
+    <div class="diff-desc" id="diffDesc">电脑玩家会偶尔失误，适合休闲对战</div>
   </div>
   <button id="startBtn">开始对战</button>
   <div class="controls-info">
     <span>↑ ↓ ← →</span> 输入方向音符 &nbsp;|&nbsp; <span>空格</span> 关键音（节拍器踩点）<br>
-    你控制左半屏，马雪娆控制右半屏，比拼谁的分数更高！
+    你控制左半屏，电脑玩家控制右半屏，比拼谁的分数更高！
   </div>
 </div>
 <div id="cardOverlay">
@@ -229,7 +229,7 @@ function pickCard(idx,timeout=false){
   const cpuC=randCardsAI(3),cpuIdx=((cs)=>{let b=0,bp=0;cs.forEach((c,i)=>{const p={legendary:4,epic:3,rare:2,common:1}[c.rarity]+Math.random()*0.5;if(p>bp){bp=p;b=i}});return b})(cpuC);
   applyCard(cpuC[cpuIdx],player2,player1);
   const h=document.querySelector('.card-hint');
-  if(h)h.innerHTML=`你选择了 <span style="color:#ffcc44">${cardChoices[idx].name}</span>${timeout?' <span style="color:#ff6666">(超时随机)</span>':''}　|　马雪娆选了 <span style="color:#ff88aa">${cpuC[cpuIdx].name}</span>`;
+  if(h)h.innerHTML=`你选择了 <span style="color:#ffcc44">${cardChoices[idx].name}</span>${timeout?' <span style="color:#ff6666">(超时随机)</span>':''}　|　电脑玩家选了 <span style="color:#ff88aa">${cpuC[cpuIdx].name}</span>`;
   updCardTags();
   playTick(600,0.1,0.2);setTimeout(()=>playTick(900,0.1,0.2),80);setTimeout(()=>playTick(1200,0.15,0.25),160);
   setTimeout(()=>{document.getElementById('cardOverlay').classList.remove('show');cardState='idle';startRoundPlay()},1800)}
@@ -245,8 +245,8 @@ function updCardTags(){
     else{t.style.background='rgba(68,136,255,0.3)';t.style.color='#88bbff';t.textContent=c.icon+' '+c.name+' ('+c.rem+')'}
     ct.appendChild(t)}});
   cCards.forEach(c=>{if(c.rem>0){const t=document.createElement('span');t.className='card-active-tag';
-    if(c.target==='opp'){t.style.background='rgba(180,60,255,0.3)';t.style.color='#cc88ff';t.textContent=c.icon+' [施加马雪娆]'+c.name+' ('+c.rem+')'}
-    else{t.style.background='rgba(255,68,136,0.25)';t.style.color='#ff88aa';t.textContent=c.icon+' 马雪娆:'+c.name+' ('+c.rem+')'}
+    if(c.target==='opp'){t.style.background='rgba(180,60,255,0.3)';t.style.color='#cc88ff';t.textContent=c.icon+' [施加电脑玩家]'+c.name+' ('+c.rem+')'}
+    else{t.style.background='rgba(255,68,136,0.25)';t.style.color='#ff88aa';t.textContent=c.icon+' 电脑玩家:'+c.name+' ('+c.rem+')'}
     ct.appendChild(t)}})}
 
 
@@ -286,7 +286,7 @@ const DIFF_CONFIG={
   }
 };
 let selectedDifficulty='normal';
-const DIFF_DESCS={easy:'马雪娆经常输错方向键，判定也不太准',normal:'马雪娆会偶尔失误，适合休闲对战',hard:'马雪娆几乎不犯错，判定精准，强力挑战！'};
+const DIFF_DESCS={easy:'电脑玩家经常输错方向键，判定也不太准',normal:'电脑玩家会偶尔失误，适合休闲对战',hard:'电脑玩家几乎不犯错，判定精准，强力挑战！'};
 function selectDiff(d){
   selectedDifficulty=d;
   document.querySelectorAll('.diff-btn').forEach(b=>b.classList.remove('selected'));
@@ -306,7 +306,7 @@ class PlayerState{
     this.aiInputTimer=0;this.aiInputIdx=0;this.aiSpaceScheduled=false;this.aiSpaceTime=0;this.aiWillMiss=false;
     this.comboShieldUsed=false;this.comboMilestone=null;
     if(side==='left'){this.themeColor='#4488ff';this.themeName='PLAYER';this.hairCol='#442200';this.outfitCol='#4466ff';this.shoeCol='#ff3366';this.accCol='#ff66aa'}
-    else{this.themeColor='#ff4488';this.themeName='马雪娆';this.hairCol='#331155';this.outfitCol='#cc44ff';this.shoeCol='#44ccff';this.accCol='#44ffcc'}
+    else{this.themeColor='#ff4488';this.themeName='电脑玩家';this.hairCol='#331155';this.outfitCol='#cc44ff';this.shoeCol='#44ccff';this.accCol='#44ffcc'}
   }
   reset(){this.score=0;this.combo=0;this.maxCombo=0;this.particles=[];this.fireParticles=[];this.spotlightEffect=null;this.judgmentDisplay=null;this.comboDisplay=null;this.dancer=new Dancer(this);this.comboShieldUsed=false;this.comboMilestone=null}
   resetRound(round,extraNotes){
@@ -629,11 +629,11 @@ function drawIntroOverlay(ts){
   ctx.font='14px Arial';ctx.fillStyle='rgba(180,210,255,0.9)';
   ctx.fillText('⬅ ➡ 方向键输入',hw/2+offsetL,h*0.35+35);
   ctx.fillText('空格键 确认节拍',hw/2+offsetL,h*0.35+55);
-  // "马雪娆" 大标签
+  // "电脑玩家" 大标签
   const offsetR=(1-slideIn)*60;
   ctx.font='bold 26px Arial';ctx.fillStyle='#ff4488';
   ctx.shadowColor='#ff4488';ctx.shadowBlur=20;
-  ctx.fillText('🤖 马雪娆',hw+hw/2+offsetR,h*0.35);
+  ctx.fillText('🤖 电脑玩家',hw+hw/2+offsetR,h*0.35);
   ctx.shadowBlur=0;
   ctx.font='14px Arial';ctx.fillStyle='rgba(255,180,200,0.9)';
   ctx.fillText('电脑自动操作',hw+hw/2+offsetR,h*0.35+35);
@@ -1007,12 +1007,12 @@ function drawEndScreen(){
   ctx.font='bold 42px Arial';ctx.textAlign='center';ctx.textBaseline='middle';const tg=ctx.createLinearGradient(cx-120,cy-120,cx+120,cy-120);tg.addColorStop(0,'#ff66cc');tg.addColorStop(0.5,'#ffaadd');tg.addColorStop(1,'#44ddff');ctx.fillStyle=tg;ctx.shadowColor='#ff66cc';ctx.shadowBlur=20;ctx.fillText('BATTLE RESULT',cx,cy-130);
   // Winner
   const p1=player1.score,p2=player2.score;let winner='';
-  if(p1>p2)winner='🎉 YOU WIN!';else if(p2>p1)winner='😤 马雪娆 WINS!';else winner='🤝 DRAW!';
+  if(p1>p2)winner='🎉 YOU WIN!';else if(p2>p1)winner='😤 电脑玩家 WINS!';else winner='🤝 DRAW!';
   ctx.font='bold 32px Arial';ctx.fillStyle=p1>p2?'#44ddff':p2>p1?'#ff6688':'#ffdd00';ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=15;ctx.fillText(winner,cx,cy-70);
   // Scores
   const lcx=cx-120,rcx=cx+120;
   ctx.font='bold 14px Arial';ctx.fillStyle='#4488ff';ctx.shadowBlur=5;ctx.fillText('PLAYER',lcx,cy-20);
-  ctx.fillStyle='#ff4488';ctx.fillText('马雪娆 ('+DIFF_CONFIG[selectedDifficulty].label+')',rcx,cy-20);
+  ctx.fillStyle='#ff4488';ctx.fillText('电脑玩家 ('+DIFF_CONFIG[selectedDifficulty].label+')',rcx,cy-20);
   ctx.font='bold 28px Arial';ctx.fillStyle='#fff';ctx.shadowColor='#4488ff';ctx.shadowBlur=8;ctx.fillText(`${player1.score}`,lcx,cy+15);
   ctx.shadowColor='#ff4488';ctx.fillText(`${player2.score}`,rcx,cy+15);
   ctx.font='16px Arial';ctx.fillStyle='#aabbdd';ctx.shadowBlur=0;ctx.fillText(`MAX COMBO: ${player1.maxCombo}`,lcx,cy+50);ctx.fillText(`MAX COMBO: ${player2.maxCombo}`,rcx,cy+50);
